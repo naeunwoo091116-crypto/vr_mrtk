@@ -1,0 +1,30 @@
+{
+    "name": "Microsoft.MixedReality.Toolkit.Providers.MetaQuest",
+    "rootNamespace": "",
+    "references": [
+        "Microsoft.MixedReality.Toolkit",
+        "Microsoft.MixedReality.Toolkit.Providers.XRSDK",
+        "Unity.XR.Management",
+        "Unity.XR.OpenXR"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_2020_2_OR_NEWER"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.xr.openxr",
+            "expression": "",
+            "define": "UNITY_OPENXR"
+        }
+    ],
+    "noEngineReferences": false
+}

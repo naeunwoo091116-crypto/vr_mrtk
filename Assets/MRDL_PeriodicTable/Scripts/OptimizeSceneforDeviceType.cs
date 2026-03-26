@@ -3,7 +3,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 //
 using UnityEngine;
-using UnityEngine.XR.WSA;
+using UnityEngine.XR;
 
 namespace HoloToolkit.MRDL.PeriodicTable
 {
@@ -14,7 +14,10 @@ namespace HoloToolkit.MRDL.PeriodicTable
         void Start()
         {
             // Check if the device type is HoloLens or Immersive HMD
-            if (HolographicSettings.IsDisplayOpaque)
+            var displays = new System.Collections.Generic.List<XRDisplaySubsystem>();
+            SubsystemManager.GetSubsystems(displays);
+            bool isDisplayOpaque = displays.Count > 0 && displays[0].displayOpaque;
+            if (isDisplayOpaque)
             {
                 // Optimize the default postion of the objects for Immersive HMD
                 containerObject.transform.position = new Vector3(0.05f, 1.2f, -1.00f);

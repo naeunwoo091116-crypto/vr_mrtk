@@ -271,7 +271,7 @@ Shader "Mixed Reality Toolkit/Standard"
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            struct v2f 
+            struct v2f
             {
                 float4 position : SV_POSITION;
 #if defined(_BORDER_LIGHT)
@@ -755,9 +755,19 @@ Shader "Mixed Reality Toolkit/Standard"
                 return o;
             }
 
-            fixed4 frag(v2f i, fixed facing : VFACE) : SV_Target
+            // Vulkan (Quest) does not allow VFACE as a separate fragment parameter
+            // when INSTANCING_ON + STEREO_MULTIVIEW_ON are active.
+#if defined(SHADER_API_VULKAN)
+#define VFACE_PARAM
+#define VFACE_DECL fixed facing = 1.0;
+#else
+#define VFACE_PARAM , fixed facing : VFACE
+#define VFACE_DECL
+#endif
+            fixed4 frag(v2f i VFACE_PARAM) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(i);
+                VFACE_DECL
 
 #if defined(_TRIPLANAR_MAPPING)
                 // Calculate triplanar uvs and apply texture scale and offset values like TRANSFORM_TEX.

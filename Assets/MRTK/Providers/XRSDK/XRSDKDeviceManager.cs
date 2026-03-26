@@ -246,7 +246,8 @@ namespace Microsoft.MixedReality.Toolkit.XRSDK.Input
 
             RecyclePointers(controller.InputSource);
 
-            if (controller.Visualizer != null &&
+            var visualizerObject = controller.Visualizer as UnityEngine.Object;
+            if (visualizerObject != null &&
                 controller.Visualizer.GameObjectProxy != null)
             {
                 controller.Visualizer.GameObjectProxy.SetActive(false);

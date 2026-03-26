@@ -15,6 +15,15 @@ namespace Microsoft.MixedReality.Toolkit.XRSDK.Input
         flags: MixedRealityControllerConfigurationFlags.UseCustomInteractionMappings)]
     public class GenericXRSDKController : BaseController
     {
+        // IL2CPP-compatible 4-param overload: Activator.CreateInstance requires exact parameter count
+        public GenericXRSDKController(
+            TrackingState trackingState,
+            Handedness controllerHandedness,
+            IMixedRealityInputSource inputSource,
+            MixedRealityInteractionMapping[] interactions)
+            : base(trackingState, controllerHandedness, inputSource, interactions, null)
+        { }
+
         public GenericXRSDKController(
             TrackingState trackingState,
             Handedness controllerHandedness,
@@ -43,6 +52,12 @@ namespace Microsoft.MixedReality.Toolkit.XRSDK.Input
         /// The current rotation of this XR SDK controller.
         /// </summary>
         protected Quaternion CurrentControllerRotation = Quaternion.identity;
+
+        /// <summary>
+        /// The current aim/pointer pose of this XR SDK controller (OpenXR aim space).
+        /// Separate from grip pose — used for SpatialPointer ray origin and direction.
+        /// </summary>
+        protected MixedRealityPose CurrentPointerPose = MixedRealityPose.ZeroIdentity;
 
         private static readonly ProfilerMarker UpdateControllerPerfMarker = new ProfilerMarker("[MRTK] GenericXRSDKController.UpdateController");
 
@@ -102,6 +117,19 @@ namespace Microsoft.MixedReality.Toolkit.XRSDK.Input
 
             CurrentControllerPose.Position = CurrentControllerPosition;
             CurrentControllerPose.Rotation = CurrentControllerRotation;
+
+            // Read aim/pointer pose (OpenXR aim space) — separate from grip pose.
+            // Falls back to grip pose if the device does not report pointer position/rotation.
+            if (inputDevice.TryGetFeatureValue(CustomUsages.PointerPosition, out Vector3 pointerPos) &&
+                inputDevice.TryGetFeatureValue(CustomUsages.PointerRotation, out Quaternion pointerRot))
+            {
+                CurrentPointerPose.Position = MixedRealityPlayspace.TransformPoint(pointerPos);
+                CurrentPointerPose.Rotation = MixedRealityPlayspace.Rotation * pointerRot;
+            }
+            else
+            {
+                CurrentPointerPose = CurrentControllerPose;
+            }
 
             // Raise input system events if it is enabled.
             if (lastState != TrackingState)
@@ -354,6 +382,15 @@ namespace Microsoft.MixedReality.Toolkit.XRSDK.Input
                 switch (interactionMapping.InputType)
                 {
                     case DeviceInputType.SpatialPointer:
+                        // Use OpenXR aim space (pointer position/rotation) for ray origin.
+                        interactionMapping.PoseData = CurrentPointerPose;
+
+                        // If our value changed raise it.
+                        if (interactionMapping.Changed)
+                        {
+                            CoreServices.InputSystem?.RaisePoseInputChanged(InputSource, ControllerHandedness, interactionMapping.MixedRealityInputAction, interactionMapping.PoseData);
+                        }
+                        break;
                     case DeviceInputType.SpatialGrip:
                         interactionMapping.PoseData = CurrentControllerPose;
 

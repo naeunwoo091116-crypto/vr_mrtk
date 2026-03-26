@@ -31,3 +31,21 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+
+# Logs
+/Logs/
+
+# User settings
+/UserSettings/
+
+# Claude / MCP
+/.claude/
+/.mcp.json
+/Assets/com.IvanMurzak/
+/Assets/com.IvanMurzak.meta
+/Assets/Resources/AI-Game-Developer-Config.json
+/Assets/Resources/AI-Game-Developer-Config.json.meta
+
+# Imported samples (can be re-imported from Package Manager)
+/Assets/Samples/
+/Assets/Samples.meta
