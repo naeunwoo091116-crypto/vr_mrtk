@@ -46,7 +46,7 @@ namespace Microsoft.MixedReality.Toolkit.XRSDK.OpenXR
                 case SupportedControllerType.OculusTouch:
                     return typeof(MetaQuestController);
                 case SupportedControllerType.ArticulatedHand:
-                    return typeof(MetaQuestHand);
+                    return typeof(MetaQuestArticulatedHand);
                 default:
                     return base.GetControllerType(supportedControllerType);
             }
