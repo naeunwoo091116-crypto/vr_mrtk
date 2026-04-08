@@ -109,9 +109,14 @@ namespace HoloToolkit.MRDL.PeriodicTable
                 foreach (ElementData element in elements)
                 {
                     GameObject newElement = Instantiate<GameObject>(ElementPrefab, Parent);
-                    newElement.GetComponentInChildren<Element>().SetFromElementData(element, typeMaterials);
+                    Element elem = newElement.GetComponentInChildren<Element>();
+                    elem.SetFromElementData(element, typeMaterials);
                     newElement.transform.localPosition = new Vector3(element.xpos * ElementSeperationDistance - ElementSeperationDistance * 18 / 2, ElementSeperationDistance * 9 - element.ypos * ElementSeperationDistance, 2.0f);
                     newElement.transform.localRotation = Quaternion.identity;
+
+                    // 핸드트래킹 grab 기능 추가 (Element 오브젝트에 AtomGrabHandler 부착)
+                    if (elem.gameObject.GetComponent<AtomGrabHandler>() == null)
+                        elem.gameObject.AddComponent<AtomGrabHandler>();
                 }
 
                 isFirstRun = false;

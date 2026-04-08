@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 //
@@ -49,6 +49,11 @@ namespace HoloToolkit.MRDL.PeriodicTable
 
         public void ResetActiveElement()
         {
+            // [추가] 만약 현재 원자를 그랩 중이라면 리셋(닫기)을 무시합니다.
+            // MRTK 핀치가 클릭으로 오인되는 상황을 방지합니다.
+            if (GetComponent<AtomGrabHandler>()?.IsGrabbing == true)
+                return;
+
             ActiveElement = null;
         }
 
@@ -111,22 +116,47 @@ namespace HoloToolkit.MRDL.PeriodicTable
             animator.enabled = true;
             animator.SetBool("Opened", true);
 
-            //Color elementNameColor = ElementName.GetComponent<MeshRenderer>().material.color;
+            // MoleculeObject와 그 콜라이더 확보
+            Transform molecule = transform.Find("MoleculeObject");
+            BoxCollider moleculeCollider = molecule?.GetComponent<BoxCollider>();
 
-            while (Element.ActiveElement == this)
+            // [변경] 그랩 중이거나 현재 활성 요소인 동안 계속 대기
+            while (Element.ActiveElement == this || (GetComponent<AtomGrabHandler>()?.IsGrabbing == true))
             {
-                //ElementName.GetComponent<MeshRenderer>().material.color = elementNameColor;
-                // Wait for the player to send it back
                 yield return null;
             }
 
+            // [핵심] 닫히기 직전 MRTK 포인터 강제 해제
+            if (molecule != null)
+            {
+                var inputSystem = Microsoft.MixedReality.Toolkit.CoreServices.InputSystem;
+                if (inputSystem != null)
+                {
+                    foreach (var pointer in inputSystem.FocusProvider.GetPointers<Microsoft.MixedReality.Toolkit.Input.IMixedRealityPointer>())
+                    {
+                        if (pointer.Result?.CurrentPointerTarget != null && 
+                            (pointer.Result.CurrentPointerTarget == molecule.gameObject || 
+                             pointer.Result.CurrentPointerTarget.transform.IsChildOf(molecule)))
+                        {
+                            pointer.IsFocusLocked = false;
+                            pointer.Reset();
+                        }
+                    }
+                }
+            }
+
+            // [중요] 닫히기 시작할 때 콜라이더를 먼저 비활성화하여 물리 엔진 오류(먹통) 원천 차단
+            if (moleculeCollider != null) moleculeCollider.enabled = false;
+
             animator.SetBool("Opened", false);
 
-            yield return new WaitForSeconds(0.66f); // TODO get rid of magic number        
+            // 애니메이션이 완전히 끝날 때까지 대기
+            yield return new WaitForSeconds(0.66f); 
 
-            // Return the item to its original position
             present.Return();
             Dim();
+            
+            if (moleculeCollider != null) moleculeCollider.enabled = true;
         }
 
 

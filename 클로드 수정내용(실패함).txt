@@ -1,0 +1,10 @@
+1.(원자 사라짐  ):
+그랩 중 매 프레임 element.SetActiveElement()를 호출해 Element.ActiveElement를 강제 유지
+기존 문제: 핀치 제스처가 MRTK 상호작용 시스템("두 번째 클릭")을 트리거 → ResetActiveElement() → ActiveElement = null → UpdateActive() 코루틴이 animator.SetBool("Opened", false) 실행 → MoleculeObject 비활성 → 원자 사라짐
+
+2. (그랩 즉시 끊김 - 핀치 히스테리시스):
+pinchLostFrames 카운터 추가 — 6프레임(~100ms) 연속 실패해야만 그랩 해제
+기존 문제: Quest 핀치 중 HandJointUtils.TryGetJointPose 1프레임 실패 → 즉시 StopGrab()
+
+3. (그랩 중 강제 해제):
+isGrabbing = true 상태에서는 shouldGrab = false가 되어도 grabEnabled를 끄지 않음

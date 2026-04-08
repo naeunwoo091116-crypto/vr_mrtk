@@ -1,7 +1,3 @@
-﻿//
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License. See LICENSE in the project root for license information.
-//
 using UnityEngine;
 
 public class Atom : MonoBehaviour
@@ -19,9 +15,7 @@ public class Atom : MonoBehaviour
     public float NucleusChangeSpeedOdds = 0.25f;
 
     public Transform ScaleTransform;
-
     public bool Collapse = false;
-
     public int NumProtons;
     public int NumNeutrons;
     public int NumElectrons;
@@ -38,7 +32,6 @@ public class Atom : MonoBehaviour
     Matrix4x4[] protonMatrixes;
     Matrix4x4[] neutronMatrixes;
     Quaternion[] randomRotations;
-    Transform transformHelper;
     MaterialPropertyBlock propertyBlock;
     Vector3 atomScale;
     Vector3 finalScale;
@@ -46,21 +39,19 @@ public class Atom : MonoBehaviour
     private void OnEnable()
     {
         RefreshProperties();
-
         atomScale = Vector3.one * 0.001f;
         transform.localScale = Vector3.one * 0.01f;
-
         if (ScaleTransform == null)
-        {
             ScaleTransform = transform.parent;
-        }
     }
 
     private void Update()
     {
+        // ... (기존 Update 코드 상단은 유지)
         RefreshProperties();
 
         Vector3 pos = transform.position;
+        if (float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z)) return;
 
         for (int i = 0; i < nucleusTargetPositions.Length; i++)
         {
@@ -83,24 +74,53 @@ public class Atom : MonoBehaviour
             atomScale = Vector3.Lerp(atomScale, Vector3.one, Time.deltaTime);
         }
 
-        finalScale = Vector3.Scale(atomScale, ScaleTransform.lossyScale);
+        // lossyScale 절댓값 + 최솟값 보정
+        Vector3 raw = ScaleTransform != null ? ScaleTransform.lossyScale : Vector3.one;
+        Vector3 safeScale = new Vector3(
+            Mathf.Max(Mathf.Abs(raw.x), 0.0001f),
+            Mathf.Max(Mathf.Abs(raw.y), 0.0001f),
+            Mathf.Max(Mathf.Abs(raw.z), 0.0001f));
+
+        finalScale = Vector3.Scale(atomScale, safeScale);
+        if (finalScale.x <= 0f) return;
 
         for (int i = 0; i < NumProtons + NumNeutrons; i++)
         {
-            nucleusCurrentPositions[i] = Vector3.Lerp(nucleusCurrentPositions[i], nucleusTargetPositions[i], Time.deltaTime * NucleusFlowSpeed);
+            nucleusCurrentPositions[i] = Vector3.Lerp(
+                nucleusCurrentPositions[i],
+                nucleusTargetPositions[i],
+                Time.deltaTime * NucleusFlowSpeed);
+
+            Vector3 jitter = Random.insideUnitSphere * NucleusJitter;
+            Vector3 atomPos = pos + (nucleusCurrentPositions[i] + jitter) * Radius * finalScale.x;
 
             if (i < NumProtons)
-            {
-                protonMatrixes[i] = Matrix4x4.TRS(pos + ((nucleusCurrentPositions[i] + (Random.insideUnitSphere * NucleusJitter)) * Radius * finalScale.x), randomRotations[i % randomRotations.Length], finalScale);
-            }
+                protonMatrixes[i] = Matrix4x4.TRS(atomPos, randomRotations[i % randomRotations.Length], finalScale);
             else
-            {
-                neutronMatrixes[i - NumProtons] = Matrix4x4.TRS(pos + ((nucleusCurrentPositions[i] + (Random.insideUnitSphere * NucleusJitter)) * Radius * finalScale.x), randomRotations[i % randomRotations.Length], finalScale);
-            }
+                neutronMatrixes[i - NumProtons] = Matrix4x4.TRS(atomPos, randomRotations[i % randomRotations.Length], finalScale);
         }
 
-        Graphics.DrawMeshInstanced(Mesh, 0, ProtonMat, protonMatrixes, protonMatrixes.Length, propertyBlock, UnityEngine.Rendering.ShadowCastingMode.Off, false, AtomLayer);
-        Graphics.DrawMeshInstanced(Mesh, 0, NeutronMat, neutronMatrixes, neutronMatrixes.Length, propertyBlock, UnityEngine.Rendering.ShadowCastingMode.Off, false, AtomLayer);
+        Graphics.DrawMeshInstanced(Mesh, 0, ProtonMat, protonMatrixes, protonMatrixes.Length,
+            propertyBlock, UnityEngine.Rendering.ShadowCastingMode.Off, false, AtomLayer);
+        Graphics.DrawMeshInstanced(Mesh, 0, NeutronMat, neutronMatrixes, neutronMatrixes.Length,
+            propertyBlock, UnityEngine.Rendering.ShadowCastingMode.Off, false, AtomLayer);
+    }
+
+    // [중요] 애니메이션이 끝난 후 스케일을 다시 한번 검사하여 물리 엔진 오류 방지
+    private void LateUpdate()
+    {
+        if (ScaleTransform != null)
+        {
+            Vector3 localScale = ScaleTransform.localScale;
+            // 스케일이 0에 너무 가깝거나 음수이면 강제로 최소값으로 고정 (물리 엔진 오류 방지)
+            if (localScale.x < 0.01f || localScale.y < 0.01f || localScale.z < 0.01f)
+            {
+                ScaleTransform.localScale = new Vector3(
+                    Mathf.Max(Mathf.Abs(localScale.x), 0.01f),
+                    Mathf.Max(Mathf.Abs(localScale.y), 0.01f),
+                    Mathf.Max(Mathf.Abs(localScale.z), 0.01f));
+            }
+        }
     }
 
     private void RefreshProperties()
@@ -116,9 +136,7 @@ public class Atom : MonoBehaviour
         {
             randomRotations = new Quaternion[10];
             for (int i = 0; i < randomRotations.Length; i++)
-            {
                 randomRotations[i] = Quaternion.Euler(Random.value * 360, Random.value * 360, Random.value * 360);
-            }
         }
 
         if (nucleusTargetPositions == null || nucleusTargetPositions.Length < NumProtons + NumNeutrons)
@@ -127,7 +145,6 @@ public class Atom : MonoBehaviour
             nucleusCurrentPositions = new Vector3[NumProtons + NumNeutrons];
             protonMatrixes = new Matrix4x4[NumProtons];
             neutronMatrixes = new Matrix4x4[NumNeutrons];
-
             for (int i = 0; i < nucleusTargetPositions.Length; i++)
             {
                 nucleusTargetPositions[i] = Random.onUnitSphere;
